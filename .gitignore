@@ -1,0 +1,41 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+
+# Intellij
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Package file
+*.jar
+*.war
+
+# config & reporter directory
+*.log
+log/
+drivers/
+src/main/resources/config/*.properties
+
+# allure reporting
+allure-report/
+allure-results/
+.allure/
+target/
+
+# credentials file
+src/test/resources/data/credential.csv
+
+# maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# https://github.com/takari/maven-wrapper#usage-without-binary-jar
+.mvn/wrapper/maven-wrapper.jar

@@ -1,5 +1,8 @@
 package com.selenium.driver;
 
+import com.selenium.enums.Routes;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.selenium.configuration.ConfigManager;
@@ -11,18 +14,27 @@ import org.openqa.selenium.remote.RemoteWebDriver;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Objects;
 
 public class DriverManager {
 
     private static final Logger logger = LoggerFactory.getLogger(DriverManager.class);
-    private static final ThreadLocal<WebDriver> driver = new ThreadLocal<>();
+    private static final ThreadLocal<WebDriver> threadLocalDriver = new ThreadLocal<>();
+    private static WebDriver localDriver;
+
+
+    private static String getExecutionMode() {
+        return System.getProperty("mode", "local");
+    }
 
     private static ChromeOptions getChromeOptions() {
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--no-sandbox");
-        options.addArguments("--headless");
         options.setAcceptInsecureCerts(true);
+        if (Objects.equals(getExecutionMode(), "remote")) {
+            options.addArguments("--no-sandbox");
+            options.addArguments("--headless");
+        }
         return options;
     }
 
@@ -52,8 +64,20 @@ public class DriverManager {
 
     public static void setDriver(String browser) {
         try {
-            logger.info("Initializing WebDriver for browser : {}", browser);
-            driver.set(new RemoteWebDriver(getSeleniumGridUrl(), getCapabilitiesForBrowser(browser)));
+            String executionMode = getExecutionMode();
+
+            if ("remote".equalsIgnoreCase(executionMode)) {
+                logger.info("Initializing remote WebDriver for browser : {}", browser);
+                threadLocalDriver.set(new RemoteWebDriver(getSeleniumGridUrl(), getCapabilitiesForBrowser(browser)));
+            } else {
+                logger.info("Initializing local WebDriver for browser : {}", browser);
+                if ("firefox".equalsIgnoreCase(browser)) {
+                    localDriver = new FirefoxDriver(getFirefoxOptions());
+                } else {
+                    ChromeOptions options = getChromeOptions();
+                    localDriver = new ChromeDriver(options);
+                }
+            }
         } catch (MalformedURLException e) {
             throw new RuntimeException("Malformed selenium grid url : " + e.getMessage(), e);
         } catch (Exception e) {
@@ -62,13 +86,24 @@ public class DriverManager {
     }
 
     public static WebDriver getDriver() {
-        return driver.get();
+        if (localDriver != null)
+            return localDriver;
+        else
+            return threadLocalDriver.get();
+
     }
 
     public static void quitDriver() {
-        if (driver.get() != null) {
-            driver.get().quit();
-            driver.remove();
-        }
+        getDriver().quit();
+    }
+
+    public static void navigateTo(Routes route) {
+        getDriver().navigate().to(ConfigManager.get("BASE_URL").concat(route.getEndpoint()));
+    }
+
+    public static void redirectedTo(Routes route) {
+        String currentUrl = getDriver().getCurrentUrl();
+        String expectedUrl = ConfigManager.get("BASE_URL").concat(route.getEndpoint());
+        assert Objects.equals(currentUrl, expectedUrl) : String.format("Unexpected url: %s, expected: %s", currentUrl, expectedUrl);
     }
 }
